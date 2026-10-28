@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ringlens"
+version = "1.0.0"
+description = "Healthcare fraud detection and referral-ring analytics with MongoDB + Neo4j"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pymongo>=4.10",
+    "neo4j>=5.26",
+    "pydantic-settings>=2.4",
+    "typer>=0.12",
+    "rich>=13",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27", "ruff>=0.6"]
+
+[project.scripts]
+ringlens = "ringlens.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E9", "F", "B", "I"]
+ignore = ["B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: needs MongoDB and Neo4j running (scripts/db.ps1 start)"]

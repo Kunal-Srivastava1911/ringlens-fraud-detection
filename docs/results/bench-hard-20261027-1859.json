@@ -1,0 +1,408 @@
+{
+  "seeds": [
+    101,
+    102,
+    103,
+    104,
+    105
+  ],
+  "profile": "demo",
+  "difficulty": "hard",
+  "started_at": "2026-10-27 18:59:51.662396+00:00",
+  "finished_at": "2026-10-27 19:03:31.691040+00:00",
+  "summary": {
+    "statistical": {
+      "precision": {
+        "mean": 0.9272,
+        "std": 0.0352,
+        "min": 0.882,
+        "max": 0.979
+      },
+      "recall": {
+        "mean": 0.6182,
+        "std": 0.0447,
+        "min": 0.561,
+        "max": 0.678
+      },
+      "f1": {
+        "mean": 0.7404,
+        "std": 0.0336,
+        "min": 0.698,
+        "max": 0.792
+      },
+      "average_precision": {
+        "mean": 0.7306,
+        "std": 0.0286,
+        "min": 0.6936,
+        "max": 0.7805
+      },
+      "precision_at_25": {
+        "mean": 0.992,
+        "std": 0.016,
+        "min": 0.96,
+        "max": 1.0
+      }
+    },
+    "graph": {
+      "precision": {
+        "mean": 0.9792,
+        "std": 0.026,
+        "min": 0.94,
+        "max": 1.0
+      },
+      "recall": {
+        "mean": 0.568,
+        "std": 0.0544,
+        "min": 0.471,
+        "max": 0.632
+      },
+      "f1": {
+        "mean": 0.7168,
+        "std": 0.0438,
+        "min": 0.64,
+        "max": 0.775
+      },
+      "average_precision": {
+        "mean": 0.9314,
+        "std": 0.0398,
+        "min": 0.8556,
+        "max": 0.9709
+      },
+      "precision_at_25": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    "fused": {
+      "precision": {
+        "mean": 0.9368,
+        "std": 0.0212,
+        "min": 0.912,
+        "max": 0.966
+      },
+      "recall": {
+        "mean": 0.9724,
+        "std": 0.0253,
+        "min": 0.926,
+        "max": 1.0
+      },
+      "f1": {
+        "mean": 0.9544,
+        "std": 0.0209,
+        "min": 0.92,
+        "max": 0.977
+      },
+      "average_precision": {
+        "mean": 0.9758,
+        "std": 0.0226,
+        "min": 0.9345,
+        "max": 0.9991
+      },
+      "precision_at_25": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    "weighted_sum": {
+      "average_precision": {
+        "mean": 0.9749,
+        "std": 0.0225,
+        "min": 0.9337,
+        "max": 0.9974
+      },
+      "precision_at_25": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    "rings": {
+      "planted": 35,
+      "recovered": 32,
+      "exact": 25,
+      "false_rings": 0
+    },
+    "recall_by_type": {
+      "broker": {
+        "mean": 0.2,
+        "std": 0.4,
+        "min": 0.0,
+        "max": 1.0
+      },
+      "duplicate_billing": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "patient_sharing": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "phantom_billing": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "referral_ring": {
+        "mean": 0.9806,
+        "std": 0.0388,
+        "min": 0.903,
+        "max": 1.0
+      },
+      "shell_identity": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "unbundling": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "upcoding": {
+        "mean": 1.0,
+        "std": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      }
+    }
+  },
+  "per_seed": [
+    {
+      "seed": 101,
+      "claims": 344846,
+      "fraudulent_providers": 87,
+      "rings_planted": 8,
+      "rings_recovered": 7,
+      "rings_exact": 6,
+      "false_rings": 0,
+      "by_type": {
+        "referral_ring": 1.0,
+        "broker": 0.0,
+        "patient_sharing": 1.0,
+        "upcoding": 1.0,
+        "phantom_billing": 1.0,
+        "unbundling": 1.0,
+        "duplicate_billing": 1.0,
+        "shell_identity": 1.0
+      },
+      "seconds": 40.7,
+      "statistical": {
+        "precision": 0.952,
+        "recall": 0.678,
+        "f1": 0.792,
+        "average_precision": 0.7805,
+        "precision_at_25": 1.0
+      },
+      "graph": {
+        "precision": 1.0,
+        "recall": 0.632,
+        "f1": 0.775,
+        "average_precision": 0.9709,
+        "precision_at_25": 1.0
+      },
+      "fused": {
+        "precision": 0.966,
+        "recall": 0.989,
+        "f1": 0.977,
+        "average_precision": 0.9928,
+        "precision_at_25": 1.0
+      },
+      "weighted_sum": {
+        "average_precision": 0.9922,
+        "precision_at_25": 1.0
+      }
+    },
+    {
+      "seed": 102,
+      "claims": 344899,
+      "fraudulent_providers": 66,
+      "rings_planted": 6,
+      "rings_recovered": 6,
+      "rings_exact": 5,
+      "false_rings": 0,
+      "by_type": {
+        "referral_ring": 1.0,
+        "broker": 1.0,
+        "patient_sharing": 1.0,
+        "upcoding": 1.0,
+        "phantom_billing": 1.0,
+        "unbundling": 1.0,
+        "duplicate_billing": 1.0,
+        "shell_identity": 1.0
+      },
+      "seconds": 48.8,
+      "statistical": {
+        "precision": 0.925,
+        "recall": 0.561,
+        "f1": 0.698,
+        "average_precision": 0.6936,
+        "precision_at_25": 1.0
+      },
+      "graph": {
+        "precision": 1.0,
+        "recall": 0.561,
+        "f1": 0.718,
+        "average_precision": 0.9361,
+        "precision_at_25": 1.0
+      },
+      "fused": {
+        "precision": 0.943,
+        "recall": 1.0,
+        "f1": 0.971,
+        "average_precision": 0.9991,
+        "precision_at_25": 1.0
+      },
+      "weighted_sum": {
+        "average_precision": 0.9974,
+        "precision_at_25": 1.0
+      }
+    },
+    {
+      "seed": 103,
+      "claims": 344921,
+      "fraudulent_providers": 78,
+      "rings_planted": 8,
+      "rings_recovered": 8,
+      "rings_exact": 6,
+      "false_rings": 0,
+      "by_type": {
+        "referral_ring": 1.0,
+        "broker": 0.0,
+        "patient_sharing": 1.0,
+        "upcoding": 1.0,
+        "phantom_billing": 1.0,
+        "unbundling": 1.0,
+        "duplicate_billing": 1.0,
+        "shell_identity": 1.0
+      },
+      "seconds": 40.8,
+      "statistical": {
+        "precision": 0.979,
+        "recall": 0.603,
+        "f1": 0.746,
+        "average_precision": 0.7348,
+        "precision_at_25": 1.0
+      },
+      "graph": {
+        "precision": 0.94,
+        "recall": 0.603,
+        "f1": 0.734,
+        "average_precision": 0.9538,
+        "precision_at_25": 1.0
+      },
+      "fused": {
+        "precision": 0.95,
+        "recall": 0.974,
+        "f1": 0.962,
+        "average_precision": 0.9798,
+        "precision_at_25": 1.0
+      },
+      "weighted_sum": {
+        "average_precision": 0.9785,
+        "precision_at_25": 1.0
+      }
+    },
+    {
+      "seed": 104,
+      "claims": 344951,
+      "fraudulent_providers": 68,
+      "rings_planted": 6,
+      "rings_recovered": 5,
+      "rings_exact": 5,
+      "false_rings": 0,
+      "by_type": {
+        "referral_ring": 0.903,
+        "broker": 0.0,
+        "patient_sharing": 1.0,
+        "upcoding": 1.0,
+        "phantom_billing": 1.0,
+        "unbundling": 1.0,
+        "duplicate_billing": 1.0,
+        "shell_identity": 1.0
+      },
+      "seconds": 38.3,
+      "statistical": {
+        "precision": 0.882,
+        "recall": 0.662,
+        "f1": 0.756,
+        "average_precision": 0.7282,
+        "precision_at_25": 0.96
+      },
+      "graph": {
+        "precision": 1.0,
+        "recall": 0.471,
+        "f1": 0.64,
+        "average_precision": 0.8556,
+        "precision_at_25": 1.0
+      },
+      "fused": {
+        "precision": 0.913,
+        "recall": 0.926,
+        "f1": 0.92,
+        "average_precision": 0.9345,
+        "precision_at_25": 1.0
+      },
+      "weighted_sum": {
+        "average_precision": 0.9337,
+        "precision_at_25": 1.0
+      }
+    },
+    {
+      "seed": 105,
+      "claims": 345027,
+      "fraudulent_providers": 75,
+      "rings_planted": 7,
+      "rings_recovered": 6,
+      "rings_exact": 3,
+      "false_rings": 0,
+      "by_type": {
+        "referral_ring": 1.0,
+        "broker": 0.0,
+        "patient_sharing": 1.0,
+        "upcoding": 1.0,
+        "phantom_billing": 1.0,
+        "unbundling": 1.0,
+        "duplicate_billing": 1.0,
+        "shell_identity": 1.0
+      },
+      "seconds": 51.5,
+      "statistical": {
+        "precision": 0.898,
+        "recall": 0.587,
+        "f1": 0.71,
+        "average_precision": 0.716,
+        "precision_at_25": 1.0
+      },
+      "graph": {
+        "precision": 0.956,
+        "recall": 0.573,
+        "f1": 0.717,
+        "average_precision": 0.9405,
+        "precision_at_25": 1.0
+      },
+      "fused": {
+        "precision": 0.912,
+        "recall": 0.973,
+        "f1": 0.942,
+        "average_precision": 0.9729,
+        "precision_at_25": 1.0
+      },
+      "weighted_sum": {
+        "average_precision": 0.9728,
+        "precision_at_25": 1.0
+      }
+    }
+  ]
+}
