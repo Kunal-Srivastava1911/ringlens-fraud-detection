@@ -22,6 +22,8 @@ import time
 from collections import OrderedDict
 from datetime import datetime, timezone
 
+from bson import Timestamp
+from pymongo import ReturnDocument
 from pymongo.errors import OperationFailure, PyMongoError
 
 from .db import cypher, cypher_autocommit, mongo_db
@@ -143,12 +145,27 @@ def control() -> dict:
     return mongo_db().pipeline_control.find_one({"_id": STATE_ID}) or {}
 
 
+def cluster_time(slack_s: int = 0) -> Timestamp:
+    """Current cluster time. A replica set returns it on every reply; the Atlas free-tier
+    proxy strips it, so there we stamp a tiny clock document with a server timestamp
+    instead and step back `slack_s` seconds. Starting early only replays changes, which
+    the idempotent apply absorbs; starting late would lose them."""
+    reply = mongo_db().command("ping")
+    if "operationTime" in reply:
+        return reply["operationTime"]
+    doc = mongo_db().rl_clock.find_one_and_update(
+        {"_id": "clock"}, {"$currentDate": {"t": {"$type": "timestamp"}}},
+        upsert=True, return_document=ReturnDocument.AFTER)
+    t = doc["t"]
+    return Timestamp(max(t.time - slack_s, 1), 0) if slack_s else t
+
+
 def snapshot(epoch) -> dict:
     """Initial load. The cluster time is captured BEFORE reading, so the change stream
     opened afterwards replays anything written while the snapshot was running."""
     db = mongo_db()
     started = time.perf_counter()
-    op_time = db.command("ping")["operationTime"]
+    op_time = cluster_time(slack_s=5)
     save_state(state="snapshotting", resume_token=None, epoch=epoch, events_applied=0)
     wipe_graph()
     ensure_graph_schema()
@@ -304,7 +321,7 @@ class Worker:
                     if time.monotonic() - last_beat > 0.5:
                         # Idle: everything committed before `seen` has been consumed if one
                         # more poll comes back empty, so the barrier may advance to it.
-                        seen = mongo_db().command("ping")["operationTime"]
+                        seen = cluster_time(slack_s=2)
                         nxt = stream.try_next()
                         if nxt is None:
                             save_state(resume_token=stream.resume_token, last_cluster_time=seen,
@@ -324,11 +341,11 @@ class Worker:
         t0 = time.perf_counter()
         batch.apply()
         apply_ms = (time.perf_counter() - t0) * 1000
-        cluster_time = mongo_db().command("ping")["operationTime"]
+        applied_through = cluster_time(slack_s=2)
         lags = batch.lags_ms or [0.0]
         # The token is saved only after Neo4j has committed: at-least-once delivery.
         save_state(resume_token=stream.resume_token, applied=batch.events, last_applied_at=datetime.now(timezone.utc),
-                   last_cluster_time=cluster_time, heartbeat=datetime.now(timezone.utc), state="streaming",
+                   last_cluster_time=applied_through, heartbeat=datetime.now(timezone.utc), state="streaming",
                    last_batch={"events": batch.events, "claims": len(batch.claims), "apply_ms": round(apply_ms, 1),
                                "lag_ms_avg": round(sum(lags) / len(lags), 1), "lag_ms_max": round(max(lags), 1)})
         _record_metrics(batch, apply_ms)
@@ -396,7 +413,7 @@ def lag_report() -> dict:
 def wait_for_barrier(timeout: float = 120.0) -> bool:
     """Cross-store barrier: wait until the worker has applied everything MongoDB had
     committed when this call started, so graph analytics sees every claim statistics see."""
-    target = mongo_db().command("ping")["operationTime"]
+    target = cluster_time()
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         st = state()
