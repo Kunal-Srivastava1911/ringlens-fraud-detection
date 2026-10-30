@@ -1,0 +1,32 @@
+# Render Blueprint for the RingLens live demo (free plan).
+#
+# The databases are hosted separately on free tiers:
+#   * MongoDB Atlas free cluster (a 3-node replica set, so change streams work)
+#   * Neo4j AuraDB Free, with Graph Data Science run in Aura Graph Analytics sessions
+# Secrets (sync: false) are set in the Render dashboard, never in this file.
+services:
+  - type: web
+    name: ringlens
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: RINGLENS_MONGO_URI          # mongodb+srv://USER:PASS@CLUSTER.mongodb.net/?retryWrites=true&w=majority
+        sync: false
+      - key: RINGLENS_NEO4J_URI          # neo4j+s://INSTANCE.databases.neo4j.io
+        sync: false
+      - key: RINGLENS_NEO4J_USER
+        value: neo4j
+      - key: RINGLENS_NEO4J_PASSWORD
+        sync: false
+      - key: RINGLENS_GDS_MODE           # GDS runs in an Aura Graph Analytics session
+        value: aura
+      - key: RINGLENS_AURA_CLIENT_ID     # Aura console > Account > API keys
+        sync: false
+      - key: RINGLENS_AURA_CLIENT_SECRET
+        sync: false
+      - key: RINGLENS_EMBED_CDC          # change-stream worker as a thread of the API
+        value: "true"
+      - key: RINGLENS_BOOTSTRAP_PROFILE  # first start: seed + analyse this synthetic world
+        value: cloud

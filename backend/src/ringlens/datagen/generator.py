@@ -41,6 +41,8 @@ class Profile:
 
 PROFILES = {
     "tiny": Profile(150, 3000, 12_000),
+    # Hosted demo: fits MongoDB Atlas free (512 MB) and AuraDB Free (200k nodes / 400k rels).
+    "cloud": Profile(400, 8000, 48_000),
     "demo": Profile(1200, 30_000, 350_000),
     "large": Profile(3000, 120_000, 1_500_000),
 }

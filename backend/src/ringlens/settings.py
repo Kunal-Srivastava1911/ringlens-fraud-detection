@@ -16,6 +16,21 @@ class Settings(BaseSettings):
     neo4j_password: str = "ringlens-dev"
     neo4j_db: str = "neo4j"
 
+    # Where Graph Data Science runs: "plugin" (local Neo4j with GDS) or "aura" (AuraDB Free +
+    # an Aura Graph Analytics session; needs Aura API credentials).
+    gds_mode: str = "plugin"
+    aura_client_id: str = ""
+    aura_client_secret: str = ""
+    aura_project_id: str = ""
+    aura_session_name: str = "ringlens-analytics"
+    aura_session_memory: str = "2GB"
+
+    # Hosted demo (one process): run the CDC worker inside the API, and on first start seed
+    # this profile and run the analytics so the console has data. Empty = off.
+    embed_cdc: bool = False
+    bootstrap_profile: str = ""
+    bootstrap_seed: int = 1
+
     # CDC micro-batching: flush after this many events or this many milliseconds.
     cdc_batch_events: int = 1000
     cdc_batch_ms: int = 250

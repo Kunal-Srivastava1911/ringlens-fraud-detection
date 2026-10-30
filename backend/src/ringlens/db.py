@@ -39,6 +39,13 @@ def truth_db() -> Database:
 
 
 @lru_cache
+def _graph_db() -> str | None:
+    """Database name; "home" (or empty) means the user's home database, which is what
+    newer Aura instances need (their database is named after the instance)."""
+    name = get_settings().neo4j_db
+    return None if name in ("", "home") else name
+
+
 def neo4j_driver() -> Driver:
     s = get_settings()
     return GraphDatabase.driver(s.neo4j_uri, auth=(s.neo4j_user, s.neo4j_password),
@@ -47,11 +54,11 @@ def neo4j_driver() -> Driver:
 
 def cypher(query: str, **params) -> list[dict]:
     """Run one Cypher statement in a managed transaction and return the records as dicts."""
-    records, _, _ = neo4j_driver().execute_query(query, params, database_=get_settings().neo4j_db)
+    records, _, _ = neo4j_driver().execute_query(query, params, database_=_graph_db())
     return [r.data() for r in records]
 
 
 def cypher_autocommit(query: str, **params) -> None:
     """For statements that manage their own transactions (CALL { } IN TRANSACTIONS)."""
-    with neo4j_driver().session(database=get_settings().neo4j_db) as session:
+    with neo4j_driver().session(database=_graph_db()) as session:
         session.run(query, params).consume()
