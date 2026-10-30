@@ -19,8 +19,26 @@ log = logging.getLogger("ringlens.hosted")
 STATUS: dict = {"bootstrap": "off"}
 
 
+def _set(status: str) -> None:
+    STATUS["bootstrap"] = status
+    log.info("bootstrap: %s", status)
+
+
+def _enable_logging() -> None:
+    """uvicorn configures only its own loggers; surface RingLens progress in the host's logs."""
+    root = logging.getLogger("ringlens")
+    if not root.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s"))
+        root.addHandler(handler)
+        root.setLevel(logging.INFO)
+        root.propagate = False
+
+
 def start() -> None:
     s = get_settings()
+    if s.embed_cdc or s.bootstrap_profile:
+        _enable_logging()
     if s.embed_cdc:
         threading.Thread(target=_cdc_forever, name="cdc-worker", daemon=True).start()
     if s.bootstrap_profile:
@@ -59,29 +77,29 @@ def _bootstrap() -> None:
     try:
         db = mongo_db()
         if db.claims.estimated_document_count() == 0:
-            STATUS["bootstrap"] = f"seeding profile {s.bootstrap_profile}"
+            _set(f"seeding profile {s.bootstrap_profile}")
             log.info("empty database: seeding profile=%s seed=%s", s.bootstrap_profile, s.bootstrap_seed)
             seed(s.bootstrap_profile, s.bootstrap_seed, "realistic")
         if db.jobs.find_one({"kind": "analyze", "status": "done"}):
-            STATUS["bootstrap"] = "done (existing results)"
+            _set("done (existing results)")
             return
-        STATUS["bootstrap"] = "waiting for the CDC snapshot into Neo4j"
+        _set("waiting for the CDC snapshot into Neo4j")
         if not _wait_for_snapshot(timeout_s=1800):
-            STATUS["bootstrap"] = "CDC snapshot did not finish in 30 min"
+            _set("CDC snapshot did not finish in 30 min")
             return
         for attempt in range(3):
-            STATUS["bootstrap"] = f"running analytics (attempt {attempt + 1})"
+            _set(f"running analytics (attempt {attempt + 1})")
             try:
                 jobs.analyze("bootstrap")
-                STATUS["bootstrap"] = "done"
+                _set("done")
                 return
             except RuntimeError:  # someone already started a run
-                STATUS["bootstrap"] = "done (run already in progress)"
+                _set("done (run already in progress)")
                 return
             except Exception:  # noqa: BLE001 - e.g. an Aura session that failed to start
                 log.exception("bootstrap analytics failed; retrying in 60 s")
                 time.sleep(60)
-        STATUS["bootstrap"] = "analytics failed 3 times; use Run analytics in the console"
+        _set("analytics failed 3 times; use Run analytics in the console")
     except Exception as exc:  # noqa: BLE001
         log.exception("bootstrap failed")
-        STATUS["bootstrap"] = f"failed: {exc}"
+        _set(f"failed: {exc}")
