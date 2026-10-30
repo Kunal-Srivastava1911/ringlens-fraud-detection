@@ -3,6 +3,8 @@
 **Polyglot persistence with MongoDB + Neo4j** · DBMS course project, Vellore Institute of Technology
 Kunal Srivastava (24BCE2476) · Samarth Saxena (24BCT0307) · Shrijit Sinha (24BCE2469)
 
+> **Live demo: https://ringlens.onrender.com** (free hosting; the first visit after a quiet spell can take about a minute to wake up). It runs the same code on cloud free tiers: MongoDB Atlas as the system of record, Neo4j AuraDB Free for the graph, and Aura Graph Analytics for the GDS algorithms. The data is the smaller `cloud` profile (400 providers, 48k claims), so the numbers there differ from the Results below.
+
 Healthcare fraud comes in two shapes:
 - **Anomalies inside claims:** upcoding, phantom billing, unbundling, duplicates. These are statistical questions over documents.
 - **Collusion between providers:** above all, *referral rings* that pass patients and money around a closed loop. These are graph questions.
