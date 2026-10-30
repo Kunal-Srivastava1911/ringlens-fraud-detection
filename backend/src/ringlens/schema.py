@@ -11,10 +11,14 @@ Modelling decisions
   pattern). It almost never changes and lets peer-group aggregations skip a $lookup.
 * Validators run at write time, so malformed claims never enter the system of record.
 """
+import logging
+
 from pymongo import ASCENDING, DESCENDING, IndexModel
 from pymongo.errors import CollectionInvalid, OperationFailure
 
 from .db import mongo_db, truth_db
+
+log = logging.getLogger("ringlens.schema")
 
 CLAIM_STATUSES = ["submitted", "adjudicated", "paid", "denied", "void"]
 NUMBER = ["double", "int", "long", "decimal"]
@@ -163,8 +167,12 @@ def create_schema(drop: bool = False) -> dict:
             db.command("collMod", name, **opts)
         else:
             db.create_collection(name, **opts)
-        # Pre-images let the CDC consumer see what a deleted document contained.
-        db.command("collMod", name, changeStreamPreAndPostImages={"enabled": True})
+        # Pre-images let the CDC consumer see what a deleted document contained. Shared tiers
+        # (MongoDB Atlas free) may refuse the option; the worker then works from claim ids alone.
+        try:
+            db.command("collMod", name, changeStreamPreAndPostImages={"enabled": True})
+        except OperationFailure as exc:
+            log.warning("pre-images unavailable on %s: %s", name, exc)
 
     for name, ts in TIMESERIES.items():
         if name not in existing:

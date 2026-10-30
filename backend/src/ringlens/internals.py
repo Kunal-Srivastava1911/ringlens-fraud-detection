@@ -140,7 +140,9 @@ def neo4j_overview() -> dict:
         RETURN collect({type: t, count: n}) AS rels""")[0]["rels"]
     constraints = cypher("SHOW CONSTRAINTS YIELD name, type, entityType, labelsOrTypes, properties "
                          "RETURN name, type, entityType, labelsOrTypes, properties")
-    gds = cypher("RETURN gds.version() AS v")[0]["v"]
+    from .graphengine import version as gds_version
+
+    gds = gds_version()
     return {**comp, "gds": gds, "nodes": counts, "relationships": rels, "constraints": constraints}
 
 

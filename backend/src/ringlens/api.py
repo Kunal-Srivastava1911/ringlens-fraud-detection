@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field
 from pymongo import DESCENDING
 from pymongo.read_concern import ReadConcern
 
-from . import cdc, intake, internals, jobs, scoring, signals_mongo
+from . import cdc, hosted, intake, internals, jobs, scoring, signals_mongo
 from .datagen import reference as ref
 from .db import MAJORITY, cypher, mongo_client, mongo_db, truth_db
 from .live import HUB, jsonable
@@ -34,6 +34,7 @@ from .settings import get_settings
 @asynccontextmanager
 async def lifespan(_app):
     HUB.start(asyncio.get_running_loop())
+    hosted.start()
     yield
     HUB.stop()
     intake.FEED.stop()
@@ -74,8 +75,12 @@ def health():
     except Exception as exc:
         out["mongo_error"] = str(exc)
     try:
-        out["gds"] = cypher("RETURN gds.version() AS v")[0]["v"]
+        cypher("RETURN 1 AS ok")
         out["neo4j"] = True
+        from .graphengine import version as gds_version
+
+        out["gds"] = gds_version()
+        out["bootstrap"] = hosted.STATUS.get("bootstrap")
     except Exception as exc:
         out["neo4j_error"] = str(exc)
     return out

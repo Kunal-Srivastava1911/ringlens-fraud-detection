@@ -109,3 +109,65 @@ def test_signal_vector_explains_what_fired():
 def test_average_precision():
     ranked = [("a", 9), ("x", 8), ("b", 7), ("y", 1)]
     assert average_precision(ranked, {"a", "b"}) == pytest.approx((1 / 1 + 2 / 3) / 2, abs=1e-4)
+
+
+def test_aura_engine_calls_match_the_installed_client(monkeypatch):
+    """The Aura engine must call real graphdatascience session endpoints with valid kwargs."""
+    import inspect
+    from types import SimpleNamespace
+
+    from ringlens import graphengine
+
+    calls = []
+
+    def recorder(sig_owner, name):
+        def fn(*args, **kwargs):
+            if sig_owner is not None:  # fail if a kwarg isn't in the real signature
+                inspect.signature(getattr(sig_owner, "write" if name != "cypher" else "cypher")).bind(None, *args, **kwargs)
+            calls.append((name, args[1:] if name == "cypher" else (), kwargs))
+            if name == "cypher":
+                return SimpleNamespace(graph=f"G:{args[0]}", result=SimpleNamespace(node_count=3, relationship_count=2))
+            return None
+        return fn
+
+    __import__("pytest").importorskip("graphdatascience")
+    from graphdatascience.procedure_surface.arrow.catalog import ProjectArrowEndpoints
+    from graphdatascience.procedure_surface.arrow.centrality.betweenness_arrow_endpoints import (
+        BetweennessArrowEndpoints,
+    )
+    from graphdatascience.procedure_surface.arrow.centrality.pagerank_arrow_endpoints import PageRankArrowEndpoints
+    from graphdatascience.procedure_surface.arrow.community.louvain_arrow_endpoints import LouvainArrowEndpoints
+    from graphdatascience.procedure_surface.arrow.community.scc_arrow_endpoints import SccArrowEndpoints
+    from graphdatascience.procedure_surface.arrow.community.wcc_arrow_endpoints import WccArrowEndpoints
+    from graphdatascience.procedure_surface.arrow.similarity.node_similarity_arrow_endpoints import (
+        NodeSimilarityArrowEndpoints,
+    )
+    from graphdatascience.session.aura_graph_data_science import AuraGraphDataScience as A
+
+    idx = {c.__name__: c for c in (BetweennessArrowEndpoints, PageRankArrowEndpoints, LouvainArrowEndpoints,
+                                   SccArrowEndpoints, WccArrowEndpoints, NodeSimilarityArrowEndpoints)}
+    fake = SimpleNamespace(
+        graph=SimpleNamespace(project=SimpleNamespace(cypher=recorder(ProjectArrowEndpoints, "cypher")),
+                              drop=lambda *a, **k: None),
+        scc=SimpleNamespace(write=recorder(idx["SccArrowEndpoints"], "scc")),
+        louvain=SimpleNamespace(write=recorder(idx["LouvainArrowEndpoints"], "louvain")),
+        page_rank=SimpleNamespace(write=recorder(idx["PageRankArrowEndpoints"], "page_rank")),
+        betweenness=SimpleNamespace(write=recorder(idx["BetweennessArrowEndpoints"], "betweenness")),
+        node_similarity=SimpleNamespace(write=recorder(idx["NodeSimilarityArrowEndpoints"], "node_similarity")),
+        wcc=SimpleNamespace(write=recorder(idx["WccArrowEndpoints"], "wcc")),
+        delete=lambda: calls.append(("delete", (), {})),
+    )
+    assert all(hasattr(A, n) for n in ("scc", "louvain", "page_rank", "betweenness", "node_similarity", "wcc"))
+    eng = graphengine.AuraEngine()
+    eng._gds = fake
+    out = eng.project(6, 3)
+    assert set(out) == {"strong", "referrals", "bipartite", "identity"}
+    for step in ("scc", "louvain", "pagerank", "betweenness", "wcc_identity"):
+        getattr(eng, step)()
+    eng.similarity(0.08)
+    eng.close()
+    names = [c[0] for c in calls]
+    assert names.count("cypher") == 5 and names[-1] == "delete"
+    assert all("gds.graph.project.remote" in c[1][0] for c in calls if c[0] == "cypher")
+    written = {c[2].get("write_property") for c in calls if c[0] not in ("cypher", "delete")}
+    assert written == {"scc", "community", "pagerank", "betweenness", "identity_cc", "jaccard"}

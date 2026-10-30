@@ -12,7 +12,8 @@
 * Ring analysis scores each candidate loop on how patients actually move through it, which
   separates rings from legitimate co-managing specialists who also refer in a cycle.
 
-GDS is called through Cypher, so every algorithm is visible as a query. Results are
+GDS runs in Neo4j (the plugin) or in an Aura Graph Analytics session on AuraDB Free; see
+graphengine.py. Either way every algorithm writes its result back to the graph. Results are
 written back to the Provider nodes and materialized into MongoDB (`graph_signals`,
 `rings`) for the scoring engine and the dashboard.
 """
@@ -26,30 +27,13 @@ from datetime import date, datetime, timezone
 
 import numpy as np
 
+from . import graphengine
 from .db import cypher, cypher_autocommit, mongo_db
 from .settings import get_settings
 
-PROJECTIONS = ["rl_strong", "rl_referrals", "rl_referrals_u", "rl_bipartite", "rl_identity"]
-
-ALGORITHMS = {
-    "scc": "CALL gds.scc.write('rl_strong', {writeProperty: 'scc'}) YIELD componentCount RETURN componentCount",
-    "louvain": ("CALL gds.louvain.write('rl_referrals_u', {writeProperty: 'community', "
-                "relationshipWeightProperty: 'weight'}) YIELD communityCount, modularity "
-                "RETURN communityCount, modularity"),
-    "pagerank": ("CALL gds.pageRank.write('rl_referrals', {writeProperty: 'pagerank', "
-                 "relationshipWeightProperty: 'weight'}) YIELD ranIterations RETURN ranIterations"),
-    "betweenness": ("CALL gds.betweenness.write('rl_referrals', {writeProperty: 'betweenness'}) "
-                    "YIELD centralityDistribution RETURN centralityDistribution.max AS max"),
-}
-
-
-def _drop_projections():
-    for name in PROJECTIONS:
-        cypher("CALL gds.graph.drop($name, false) YIELD graphName RETURN graphName", name=name)
-
 
 def build_refers_to() -> dict:
-    cypher_autocommit("MATCH ()-[x:REFERS_TO|SHARES_PATIENTS]->() CALL (x) { DELETE x } IN TRANSACTIONS OF 20000 ROWS")
+    cypher_autocommit("MATCH ()-[x:REFERS_TO|SHARES_PATIENTS|RL_SIMILAR]->() CALL (x) { DELETE x } IN TRANSACTIONS OF 20000 ROWS")
     return cypher("""
         MATCH (a:Provider)-[r:REFERRED]->(b:Provider)
         WITH a, b, count(r) AS c, sum(r.amount) AS amt, count(DISTINCT r.patient_id) AS pts
@@ -57,59 +41,36 @@ def build_refers_to() -> dict:
         RETURN count(*) AS edges""")[0]
 
 
-def project_graphs() -> dict:
+def project_graphs(eng) -> dict:
     s = get_settings()
-    _drop_projections()
-    out = {}
-    out["strong"] = cypher("""
-        MATCH (a:Provider)-[r:REFERS_TO]->(b:Provider)
-        WHERE r.count >= $mc AND r.patients >= $mp
-        WITH gds.graph.project('rl_strong', a, b, {relationshipProperties: {weight: toFloat(r.count)}}) AS g
-        RETURN g.nodeCount AS nodes, g.relationshipCount AS rels""", mc=s.strong_min_referrals,
-                           mp=s.strong_min_patients)[0]
-    out["referrals"] = cypher("""
-        MATCH (a:Provider)-[r:REFERS_TO]->(b:Provider)
-        WITH gds.graph.project('rl_referrals', a, b, {relationshipProperties: {weight: toFloat(r.count)}}) AS g
-        RETURN g.nodeCount AS nodes, g.relationshipCount AS rels""")[0]
-    cypher("""
-        MATCH (a:Provider)-[r:REFERS_TO]->(b:Provider)
-        WITH gds.graph.project('rl_referrals_u', a, b, {relationshipProperties: {weight: toFloat(r.count)}},
-                               {undirectedRelationshipTypes: ['*']}) AS g
-        RETURN g.nodeCount AS nodes""")
-    out["bipartite"] = cypher("""
-        MATCH (p:Provider)-[t:TREATED]->(pt:Patient)
-        WITH p, pt, count(t) AS w
-        WITH gds.graph.project('rl_bipartite', p, pt, {sourceNodeLabels: ['Provider'], targetNodeLabels: ['Patient'],
-                               relationshipProperties: {weight: toFloat(w)}}) AS g
-        RETURN g.nodeCount AS nodes, g.relationshipCount AS rels""")[0]
-    out["identity"] = cypher("""
-        MATCH (p:Provider)-[:PAID_TO]->(b:BankAccount)
-        WITH gds.graph.project('rl_identity', p, b, {}, {undirectedRelationshipTypes: ['*']}) AS g
-        RETURN g.nodeCount AS nodes, g.relationshipCount AS rels""")[0]
-    return out
+    return eng.project(s.strong_min_referrals, s.strong_min_patients)
 
 
-def run_algorithms() -> dict:
-    cypher("MATCH (p:Provider) REMOVE p.scc, p.community, p.pagerank, p.betweenness, p.ring_id, p.ring_suspicion")
+def run_algorithms(eng) -> dict:
+    cypher("MATCH (p:Provider) REMOVE p.scc, p.community, p.pagerank, p.betweenness, p.ring_id, p.ring_suspicion, "
+           "p.identity_cc")
     timings = {}
-    for name, query in ALGORITHMS.items():
+    for name in ("scc", "louvain", "pagerank", "betweenness"):
         t0 = time.perf_counter()
-        cypher(query)
+        getattr(eng, name)()
         timings[name] = round(time.perf_counter() - t0, 3)
     return timings
 
 
-def shared_patients(cutoff: float = 0.08) -> list[dict]:
-    """Provider pairs with heavily overlapping patient sets and NO referral edge between them."""
+def shared_patients(eng, cutoff: float = 0.08) -> list[dict]:
+    """Provider pairs with heavily overlapping patient sets and NO referral edge between them.
+
+    Node similarity writes RL_SIMILAR {jaccard} edges (in place on the plugin, or written back
+    from an Aura Graph Analytics session); Cypher keeps the pairs that never refer to each other."""
+    eng.similarity(cutoff)
     pairs = cypher("""
-        CALL gds.nodeSimilarity.stream('rl_bipartite', {topK: 3, similarityCutoff: $cutoff, degreeCutoff: 15,
-                                                         similarityMetric: 'JACCARD'})
-        YIELD node1, node2, similarity
-        WITH gds.util.asNode(node1) AS a, gds.util.asNode(node2) AS b, similarity
+        MATCH (a:Provider)-[s:RL_SIMILAR]->(b:Provider)
         WHERE a.npi < b.npi AND NOT EXISTS { (a)-[:REFERS_TO]-(b) }
-        MERGE (a)-[s:SHARES_PATIENTS]->(b)
-        SET s.jaccard = similarity
-        RETURN a.npi AS a, b.npi AS b, similarity AS jaccard""", cutoff=cutoff)
+        WITH a, b, max(s.jaccard) AS similarity
+        MERGE (a)-[x:SHARES_PATIENTS]->(b)
+        SET x.jaccard = similarity
+        RETURN a.npi AS a, b.npi AS b, similarity AS jaccard""")
+    cypher_autocommit("MATCH ()-[s:RL_SIMILAR]->() CALL (s) { DELETE s } IN TRANSACTIONS OF 20000 ROWS")
     shared_counts = cypher("""
         MATCH (a:Provider)-[s:SHARES_PATIENTS]->(b:Provider)
         CALL (a, b) { MATCH (a)-[:TREATED]->(pt:Patient)<-[:TREATED]-(b) RETURN count(DISTINCT pt) AS shared }
@@ -121,11 +82,11 @@ def shared_patients(cutoff: float = 0.08) -> list[dict]:
     return pairs
 
 
-def identity_clusters() -> dict[str, int]:
+def identity_clusters(eng) -> dict[str, int]:
+    eng.wcc_identity()
     rows = cypher("""
-        CALL gds.wcc.stream('rl_identity') YIELD nodeId, componentId
-        WITH gds.util.asNode(nodeId) AS n, componentId WHERE n:Provider
-        WITH componentId, collect(n.npi) AS members WHERE size(members) > 1
+        MATCH (n:Provider) WHERE n.identity_cc IS NOT NULL
+        WITH n.identity_cc AS componentId, collect(n.npi) AS members WHERE size(members) > 1
         RETURN members""")
     out = {}
     for r in rows:
@@ -320,21 +281,28 @@ def compute_all(progress=None) -> dict:
     t0 = time.perf_counter()
     step("graph.refers_to")
     agg = build_refers_to()
-    step("graph.project")
-    projections = project_graphs()
-    step("graph.algorithms")
-    timings = run_algorithms()
-    step("graph.similarity")
-    t1 = time.perf_counter()
-    pairs = shared_patients()
-    timings["node_similarity"] = round(time.perf_counter() - t1, 3)
-    identity = identity_clusters()
+    eng = graphengine.engine()
+    try:
+        step("graph.project")
+        t1 = time.perf_counter()
+        projections = project_graphs(eng)
+        projections["engine"] = eng.name
+        projections["seconds"] = round(time.perf_counter() - t1, 3)
+        step("graph.algorithms")
+        timings = run_algorithms(eng)
+        step("graph.similarity")
+        t1 = time.perf_counter()
+        pairs = shared_patients(eng)
+        timings["node_similarity"] = round(time.perf_counter() - t1, 3)
+        identity = identity_clusters(eng)
+        eng.drop()
+    finally:
+        eng.close()
     step("graph.rings")
     t1 = time.perf_counter()
     rings = detect_rings()
     timings["ring_analysis"] = round(time.perf_counter() - t1, 3)
     exported = export_signals(rings, pairs, identity)
-    _drop_projections()
     return {"refers_to_edges": agg["edges"], "projections": projections, "timings": timings,
             "candidates": len(rings), "rings_detected": sum(r["detected"] for r in rings),
             "new_rings": [r["_id"] for r in rings if r["is_new"]], "shared_patient_pairs": len(pairs),

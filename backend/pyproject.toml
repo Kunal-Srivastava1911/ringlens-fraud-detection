@@ -20,6 +20,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "httpx>=0.27", "ruff>=0.6"]
+# Neo4j AuraDB Free: run GDS in an Aura Graph Analytics session (RINGLENS_GDS_MODE=aura)
+aura = ["graphdatascience>=1.15"]
 
 [project.scripts]
 ringlens = "ringlens.cli:app"

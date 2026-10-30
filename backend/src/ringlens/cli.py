@@ -43,7 +43,9 @@ def doctor():
         console.print(f"[red]MongoDB unreachable[/]: {exc}")
     try:
         v = cypher("CALL dbms.components() YIELD versions, edition RETURN versions[0] AS v, edition")[0]
-        gds = cypher("RETURN gds.version() AS v")[0]["v"]
+        from .graphengine import version as gds_version
+
+        gds = gds_version()
         apoc = cypher("RETURN apoc.version() AS v")[0]["v"]
         console.print(f"[green]Neo4j[/] {v['v']} {v['edition']} · GDS {gds} · APOC {apoc}")
     except Exception as exc:
