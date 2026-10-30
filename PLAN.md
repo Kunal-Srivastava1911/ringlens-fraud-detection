@@ -480,7 +480,7 @@ Each phase ends with something runnable and a check I will actually run. The bac
 ## 18. Defaults assumed unless you say otherwise
 
 - The working name is **RingLens**. It is easy to rename now and harder later.
-- The authors are you plus the two teammates listed in the prototype README (Samarth Saxena, Shrijit Sinha).
+- The author is Kunal Srivastava.
 - The prototype is zipped to the session scratchpad, then deleted.
 - `git init` for diffs, with no commits unless you ask.
 - `lite` for development, `cluster` for the final demo.

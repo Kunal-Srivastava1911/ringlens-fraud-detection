@@ -1,7 +1,7 @@
 # RingLens: healthcare fraud and referral-ring analytics
 
 **Polyglot persistence with MongoDB + Neo4j** · DBMS course project, Vellore Institute of Technology
-Kunal Srivastava (24BCE2476) · Samarth Saxena (24BCT0307) · Shrijit Sinha (24BCE2469)
+Kunal Srivastava (24BCE2476)
 
 > **Live demo: https://ringlens.onrender.com** (free hosting; the first visit after a quiet spell can take about a minute to wake up). It runs the same code on cloud free tiers: MongoDB Atlas as the system of record, Neo4j AuraDB Free for the graph, and Aura Graph Analytics for the GDS algorithms. The data is the smaller `cloud` profile (400 providers, 48k claims), so the numbers there differ from the Results below.
 
